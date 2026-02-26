@@ -152,6 +152,7 @@
         window.updateSearch = (v) => { state.searchQuery = v; render(); };
         window.updateFilterClass = (v) => { state.filterClass = v; render(); };
         window.updateFilterGender = (v) => { state.filterGender = v; render(); };
+        window.updatePrintMonth = (v) => { state.printMonth = v; render(); };
 
         function render() {
             const container = document.getElementById('content');
@@ -206,7 +207,7 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                         <input type="month" onchange="state.printMonth = this.value" value="${state.printMonth}" class="bg-white border p-2 rounded-xl text-[9px] font-bold uppercase outline-none">
+                         <input type="month" onchange="window.updatePrintMonth(this.value)" value="${state.printMonth}" class="bg-white border p-2 rounded-xl text-[9px] font-bold uppercase outline-none">
                          <button onclick="window.preparePrint('C9_MONTH')" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-[9px] uppercase shadow-lg flex items-center gap-2">
                              <i data-lucide="printer" class="w-4 h-4"></i> Cetak C9 Bulanan
                          </button>
