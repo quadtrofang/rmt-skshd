@@ -198,6 +198,11 @@
                             <button onclick="window.confirmAttendance()" class="${isConfirmed ? 'bg-emerald-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-xl font-bold text-[9px] uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all">
                                 <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> ${isConfirmed ? 'Telah Disahkan' : 'Sahkan Hari Ini'}
                             </button>
+                            ${isConfirmed ? `
+                            <button onclick="window.resetAttendance()" class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-xl font-bold text-[9px] uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Padam (Reset)
+                            </button>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="flex gap-2">
@@ -489,6 +494,13 @@
             const records = state.attendance[date] || {};
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', date), { records, updatedAt: Date.now() });
             alert(`Selesai! Kehadiran bertarikh ${date} telah direkodkan.`);
+        };
+
+        window.resetAttendance = async () => {
+            const date = state.selectedDate;
+            if(confirm(`AWAS: Adakah anda pasti mahu memadam dan reset semula rekod kehadiran pukal untuk tarikh ${date}?`)) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', date));
+            }
         };
 
         window.toggleAtt = async (id) => {
@@ -991,7 +1003,10 @@
             }, (e) => showError("Ralat Firestore. Sila periksa Rules pangkalan data anda."));
             
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), (snap) => {
-                snap.docs.forEach(d => state.attendance[d.id] = d.data().records);
+                // BUG FIX: Mengosongkan data lama supaya tarikh yang dipadam terus terpadam di UI
+                const newAtt = {};
+                snap.docs.forEach(d => newAtt[d.id] = d.data().records);
+                state.attendance = newAtt;
                 render();
             });
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC8'), (snap) => {
