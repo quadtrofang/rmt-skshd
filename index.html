@@ -143,7 +143,8 @@
             printMonth: new Date().toISOString().substring(0, 7),
             searchQuery: '',
             filterClass: '',
-            filterGender: ''
+            filterGender: '',
+            editStudentId: null
         };
 
         window.setTab = (t) => { state.tab = t; render(); };
@@ -296,7 +297,10 @@
                                         <option value="L">LELAKI (L)</option><option value="P">PEREMPUAN (P)</option>
                                     </select>
                                 </div>
-                                <button onclick="window.addStudent()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[10px] shadow-lg">Simpan ke Pangkalan Data</button>
+                                <div class="flex gap-2">
+                                    <button id="btnSubmitStudent" onclick="window.addStudent()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[10px] shadow-lg transition-all">Simpan ke Pangkalan Data</button>
+                                    <button id="btnCancelEdit" onclick="window.cancelEdit()" class="hidden bg-slate-200 text-slate-700 px-6 py-4 rounded-2xl font-bold uppercase text-[10px] shadow-sm transition-all hover:bg-slate-300">Batal</button>
+                                </div>
                             </div>
                         </div>
 
@@ -317,7 +321,10 @@
                                         <div class="font-bold text-slate-800 text-xs">${s.name}</div>
                                         <div class="text-emerald-600 font-black text-[9px] tracking-widest mt-1">${s.className} | ${s.gender || 'L/P'}</div>
                                     </div>
-                                    <button onclick="window.delStudent('${s.id}')" class="p-2 text-rose-400 hover:text-rose-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    <div class="flex gap-1">
+                                        <button onclick="window.editStudent('${s.id}')" class="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                                        <button onclick="window.delStudent('${s.id}')" class="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
@@ -479,14 +486,36 @@
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', date), { records, updatedAt: Date.now() });
         };
 
+        window.cancelEdit = () => {
+            state.editStudentId = null;
+            document.getElementById('stuName').value = ''; 
+            document.getElementById('stuClass').value = '';
+            document.getElementById('stuGender').value = 'L';
+            document.getElementById('btnSubmitStudent').innerText = "Simpan ke Pangkalan Data";
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+        };
+
+        window.editStudent = (id) => {
+            const student = state.students.find(s => s.id === id);
+            if (student) {
+                state.editStudentId = id;
+                document.getElementById('stuName').value = student.name || '';
+                document.getElementById('stuClass').value = student.className || '';
+                document.getElementById('stuGender').value = student.gender || 'L';
+                document.getElementById('btnSubmitStudent').innerText = "Kemas Kini Data";
+                document.getElementById('btnCancelEdit').classList.remove('hidden');
+                document.getElementById('stuName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        };
+
         window.addStudent = async () => {
             const n = document.getElementById('stuName').value;
             const c = document.getElementById('stuClass').value;
             const g = document.getElementById('stuGender').value;
             if(!n || !c) return;
-            const id = Date.now().toString();
+            const id = state.editStudentId || Date.now().toString();
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { id, name: n.toUpperCase(), className: c.toUpperCase(), gender: g });
-            document.getElementById('stuName').value = ''; document.getElementById('stuClass').value = '';
+            window.cancelEdit();
         };
 
         window.addBulk = async () => {
@@ -927,11 +956,13 @@
                 render();
             });
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC8'), (snap) => {
-                state.reportsC8 = snap.docs.map(d => d.data()).sort((a,b) => b.date.localeCompare(a.date));
+                // Susun ikut kronologi tarikh: paling lama ke paling baru (ascending)
+                state.reportsC8 = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
                 render();
             });
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC7'), (snap) => {
-                state.reportsC7 = snap.docs.map(d => d.data()).sort((a,b) => b.date.localeCompare(a.date));
+                // Susun ikut kronologi tarikh: paling lama ke paling baru (ascending)
+                state.reportsC7 = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
                 render();
             });
         });
