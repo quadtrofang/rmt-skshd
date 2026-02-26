@@ -3,38 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem RMT SKSHD - Diagnostik</title>
+    <title>Sistem RMT SKSHD - Rasmi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         @media print { .no-print { display: none !important; } .print-area { display: block !important; } }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .tab-active { background-color: #059669; color: white; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2); }
     </style>
 </head>
 <body class="bg-[#F8FAFC] text-slate-800 text-sm h-screen flex flex-col overflow-hidden">
 
-    <!-- SCREEN LOADING & DIAGNOSTIK -->
-    <div id="loader" class="fixed inset-0 bg-slate-900 z-[9999] flex flex-col items-center justify-center text-white p-6">
-        <div id="spinner" class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p id="loading-text" class="font-bold text-[10px] uppercase tracking-[0.3em] text-emerald-400">Menyambung Awan...</p>
-        
-        <div class="mt-8 w-full max-w-xs space-y-2">
-            <div id="step-auth" class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 opacity-30">
-                <div class="w-2 h-2 rounded-full bg-white" id="dot-auth"></div>
-                <span class="text-[9px] font-bold uppercase tracking-widest">1. Pengesahan (Auth)</span>
-            </div>
-            <div id="step-data" class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10 opacity-30">
-                <div class="w-2 h-2 rounded-full bg-white" id="dot-data"></div>
-                <span class="text-[9px] font-bold uppercase tracking-widest">2. Aliran Data (Firestore)</span>
-            </div>
-        </div>
-
+    <!-- SCREEN LOADING -->
+    <div id="loader" class="fixed inset-0 bg-slate-900 z-[9999] flex flex-col items-center justify-center text-white p-6 transition-opacity duration-500">
+        <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg shadow-emerald-500/20"></div>
+        <p id="loading-text" class="font-bold text-[10px] uppercase tracking-[0.3em] text-emerald-400">Menyambung Awan SKSHD...</p>
         <div id="error-box" class="hidden mt-6 p-4 bg-rose-500/10 border border-rose-500/50 rounded-2xl max-w-sm w-full text-center">
-            <p class="text-rose-400 font-black text-[9px] uppercase mb-2 tracking-widest">Punca Kegagalan:</p>
-            <p id="error-msg" class="text-white text-xs font-medium"></p>
-            <button onclick="location.reload()" class="mt-4 text-[8px] font-black uppercase bg-white/10 px-4 py-2 rounded-lg">Cuba Lagi</button>
+            <p id="error-msg" class="text-rose-300 text-xs font-medium"></p>
         </div>
     </div>
 
@@ -50,7 +38,7 @@
                     </div>
                 </div>
             </div>
-            <nav class="flex-1 p-4 space-y-1">
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto custom-scroll">
                 <button onclick="window.setTab('dash')" id="nav-dash" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-bold text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-800">
                     <i data-lucide="check-square" class="w-4 h-4"></i> <span>Kehadiran (C9)</span>
                 </button>
@@ -68,10 +56,11 @@
 
         <!-- MAIN AREA -->
         <div class="flex-1 flex flex-col overflow-hidden relative">
-            <header class="md:hidden bg-slate-900 text-white p-3 flex justify-between items-center no-print">
+            <!-- Mobile Navigation -->
+            <header class="md:hidden bg-slate-900 text-white p-3 flex justify-between items-center no-print shadow-xl">
                 <div class="flex items-center gap-2">
                     <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i>
-                    <span class="font-black uppercase text-[10px]">RMT SKSHD</span>
+                    <span class="font-black uppercase text-[10px] tracking-tight">RMT SKSHD</span>
                 </div>
                 <div class="flex gap-1">
                     <button onclick="window.setTab('dash')" class="p-2"><i data-lucide="check-square" class="w-4 h-4"></i></button>
@@ -80,18 +69,32 @@
                     <button onclick="window.setTab('mon')" class="p-2"><i data-lucide="shield-check" class="w-4 h-4"></i></button>
                 </div>
             </header>
-            <main class="flex-1 overflow-y-auto p-4 md:p-8">
+
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 custom-scroll">
                 <div id="main-content" class="max-w-5xl mx-auto"></div>
             </main>
+
+            <!-- PRINT OVERLAY -->
+            <div id="print-overlay" class="fixed inset-0 bg-white z-[5000] hidden overflow-y-auto p-8 text-black">
+                <div class="no-print mb-8 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur-md p-4 border-b">
+                    <h3 class="font-black uppercase text-xs">Pratinjau Cetakan</h3>
+                    <div class="flex gap-2">
+                        <button onclick="window.print()" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold text-[10px] uppercase shadow-lg">Cetak Sekarang</button>
+                        <button onclick="document.getElementById('print-overlay').classList.add('hidden')" class="bg-slate-100 text-slate-500 px-6 py-2 rounded-lg font-bold text-[10px] uppercase">Tutup</button>
+                    </div>
+                </div>
+                <div id="print-area" class="max-w-[210mm] mx-auto bg-white border border-slate-200 p-10 shadow-2xl"></div>
+            </div>
         </div>
     </div>
 
     <!-- FIREBASE MODULES -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+        // Firebase Config (Kekal dari versi anda yang berfungsi)
         const firebaseConfig = {
             apiKey: "AIzaSyCdIiY2Bpu924jrZzaqVO0SqXvOYfPAjQc",
             authDomain: "rmt-skshd.firebaseapp.com",
@@ -101,107 +104,212 @@
             appId: "1:10103675688:web:ddfec86ee46f4b2a148e1d"
         };
 
-        const updateUI = (step, status) => {
-            const el = document.getElementById(`step-${step}`);
-            const dot = document.getElementById(`dot-${step}`);
-            el.classList.remove('opacity-30');
-            el.classList.add('opacity-100');
-            if (status === 'done') dot.className = "w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]";
-            if (status === 'fail') dot.className = "w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_#f43f5e]";
-        };
-
         const showError = (m) => {
-            document.getElementById('error-box').classList.remove('hidden');
+            document.getElementById('loading-text').innerText = "RALAT";
+            const eb = document.getElementById('error-box');
+            eb.classList.remove('hidden');
             document.getElementById('error-msg').innerText = m;
-            document.getElementById('spinner').classList.add('hidden');
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = "skshd-rmt-cloud-v2";
+        let db, auth;
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch (e) { showError(e.message); }
 
-        let state = { tab: 'dash', students: [], attendance: {}, reportsC8: [], reportsC7: [] };
+        const appId = "skshd-rmt-cloud-v3";
+        let state = {
+            tab: 'dash',
+            students: [],
+            attendance: {},
+            reportsC8: [],
+            reportsC7: [],
+            loading: true
+        };
 
         window.setTab = (t) => { state.tab = t; render(); };
 
         function render() {
             const content = document.getElementById('main-content');
+            
             document.querySelectorAll('aside nav button').forEach(b => b.classList.remove('tab-active'));
             const activeNav = document.getElementById(`nav-${state.tab}`);
             if (activeNav) activeNav.classList.add('tab-active');
 
             if (state.tab === 'dash') content.innerHTML = renderDashboard();
             else if (state.tab === 'stu') content.innerHTML = renderStudents();
-            else if (state.tab === 'rep') content.innerHTML = renderReports();
-            else if (state.tab === 'mon') content.innerHTML = renderMon();
+            else if (state.tab === 'rep') content.innerHTML = renderReportsC8();
+            else if (state.tab === 'mon') content.innerHTML = renderMonitoringC7();
+
             lucide.createIcons();
         }
 
+        // --- DASHBOARD (C9) ---
         function renderDashboard() {
             const today = new Date().toISOString().split('T')[0];
             const att = state.attendance[today] || {};
             const hadir = Object.values(att).filter(v => v).length;
+
             return `
-                <h2 class="text-xl font-black uppercase mb-6">Kehadiran Hari Ini (${today})</h2>
-                <div class="grid grid-cols-2 gap-4 mb-8">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200">
-                        <p class="text-[8px] font-bold text-slate-400 uppercase">Jumlah Murid</p>
-                        <p class="text-2xl font-black">${state.students.length}</p>
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-black uppercase tracking-tight">Kehadiran (C9)</h2>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Tarikh: ${today}</p>
                     </div>
-                    <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-emerald-700">
-                        <p class="text-[8px] font-bold uppercase">Hadir</p>
-                        <p class="text-2xl font-black">${hadir}</p>
+                    <button onclick="window.preparePrint('C9')" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center gap-2 shadow-xl hover:bg-slate-800 transition-all">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak C9
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Penerima Berdaftar</p>
+                        <p class="text-2xl font-black text-slate-800 leading-none">${state.students.length}</p>
+                    </div>
+                    <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 shadow-sm text-emerald-700">
+                        <p class="text-[8px] font-black uppercase tracking-widest mb-1">Hadir Hari Ini</p>
+                        <p class="text-2xl font-black leading-none">${hadir}</p>
                     </div>
                 </div>
-                <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-[9px] font-bold uppercase text-slate-400">
-                            <tr><th class="p-5">Nama Murid</th><th class="p-5 text-center">Status</th></tr>
+
+                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 border-b border-slate-100 text-[9px] uppercase font-bold text-slate-400">
+                            <tr><th class="p-5 w-16 text-center">BIL</th><th class="p-5">PROFIL MURID</th><th class="p-5 text-center">STATUS</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
-                            ${state.students.map(s => `
-                                <tr>
-                                    <td class="p-5 font-bold uppercase">${s.name} <br><span class="text-[8px] opacity-40">${s.className}</span></td>
+                            ${state.students.map((s, i) => `
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="p-5 text-center font-bold text-slate-300">${i+1}</td>
+                                    <td class="p-5 uppercase font-bold text-slate-700 leading-tight">
+                                        ${s.name} <br><span class="text-[8px] font-black text-slate-400 tracking-widest">${s.className}</span>
+                                    </td>
                                     <td class="p-5 text-center">
-                                        <button onclick="window.toggleAtt('${s.id}')" class="px-6 py-2 rounded-xl font-black text-[9px] uppercase transition-all ${att[s.id] ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}">
+                                        <button onclick="window.toggleAtt('${s.id}')" class="px-5 py-2 rounded-xl font-black text-[9px] uppercase transition-all shadow-md active:scale-90 ${att[s.id] ? 'bg-emerald-500 text-white border-b-4 border-emerald-700' : 'bg-slate-100 text-slate-400 border-b-4 border-slate-200'}">
                                             ${att[s.id] ? 'Hadir' : 'Ponteng'}
                                         </button>
                                     </td>
                                 </tr>
                             `).join('')}
+                            ${state.students.length === 0 ? '<tr><td colspan="3" class="p-20 text-center opacity-30 font-bold uppercase tracking-[0.3em]">Tiada data murid.</td></tr>' : ''}
                         </tbody>
                     </table>
                 </div>
             `;
         }
 
+        // --- URUS MURID (C4) ---
         function renderStudents() {
             return `
-                <h2 class="text-xl font-black uppercase mb-6">Urus Murid</h2>
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 mb-6">
-                    <div class="flex flex-col md:flex-row gap-3">
-                        <input id="stuName" type="text" placeholder="NAMA PENUH" class="flex-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs outline-none">
-                        <input id="stuClass" type="text" placeholder="KELAS" class="md:w-32 p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs outline-none">
-                        <button onclick="window.addStudent()" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold uppercase text-[9px]">Simpan</button>
-                    </div>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black uppercase tracking-tight text-slate-800">Urus Murid (C4)</h2>
+                    <button onclick="window.preparePrint('C4')" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center gap-2 shadow-xl hover:bg-slate-800 transition-all">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Borang C4
+                    </button>
                 </div>
-                <div class="bg-white p-6 rounded-3xl border border-slate-200">
-                    <div class="space-y-2">
-                        ${state.students.map(s => `
-                            <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center font-bold uppercase text-[10px]">
-                                <span>${s.name} (${s.className})</span>
-                                <button onclick="window.delStudent('${s.id}')" class="text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                            </div>
-                        `).join('')}
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit sticky top-0">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Daftar Murid Baru</h3>
+                        <div class="space-y-4">
+                            <input id="stuName" type="text" placeholder="NAMA PENUH" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs outline-none focus:border-emerald-500 transition-all shadow-inner">
+                            <input id="stuClass" type="text" placeholder="TAHUN/KELAS" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs outline-none focus:border-emerald-500 transition-all shadow-inner">
+                            <button onclick="window.addStudent()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[9px] tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all active:scale-95">Simpan Data</button>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Senarai Berdaftar (${state.students.length})</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            ${state.students.map(s => `
+                                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-transparent hover:border-slate-100 hover:bg-white hover:shadow-lg transition-all group">
+                                    <div class="uppercase">
+                                        <div class="font-bold text-slate-700 text-xs">${s.name}</div>
+                                        <div class="text-emerald-500 font-black text-[8px] tracking-widest leading-none mt-1">${s.className}</div>
+                                    </div>
+                                    <button onclick="window.delStudent('${s.id}')" class="p-2 text-slate-300 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             `;
         }
 
-        function renderReports() { return `<h2 class="p-10 text-center opacity-30 font-black uppercase">Mod Laporan C8 Bersedia</h2>`; }
-        function renderMon() { return `<h2 class="p-10 text-center opacity-30 font-black uppercase">Mod Pemantauan C7 Bersedia</h2>`; }
+        // --- LAPORAN HARIAN (C8) ---
+        function renderReportsC8() {
+            return `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black uppercase tracking-tight">Laporan Harian (C8)</h2>
+                    <button onclick="window.preparePrint('C8')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center gap-2 shadow-xl hover:bg-indigo-700 transition-all">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Borang C8
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Input Laporan</h3>
+                        <div class="space-y-4">
+                            <input id="c8Date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs">
+                            <input id="c8Teacher" type="text" placeholder="GURU BERTUGAS" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs">
+                            <textarea id="c8Notes" placeholder="CATATAN KUALITI MAKANAN" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs h-24 outline-none focus:border-indigo-500 transition-all"></textarea>
+                            <button onclick="window.addReportC8()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[9px] tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all">Hantar Laporan</button>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Arkib Laporan</h3>
+                        <div class="space-y-3">
+                            ${state.reportsC8.map(r => `
+                                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-transparent hover:bg-white hover:shadow-md transition-all">
+                                    <div class="uppercase">
+                                        <div class="font-bold text-slate-700 text-xs">${r.date}</div>
+                                        <div class="text-indigo-500 font-black text-[8px] tracking-widest mt-1">GURU: ${r.teacher}</div>
+                                    </div>
+                                    <button onclick="window.delReportC8('${r.id}')" class="p-2 text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
+        // --- PEMANTAUAN (C7) ---
+        function renderMonitoringC7() {
+            return `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black uppercase tracking-tight">Pemantauan Pentadbir (C7)</h2>
+                    <button onclick="window.preparePrint('C7')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase flex items-center gap-2 shadow-xl hover:bg-indigo-700 transition-all">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> Borang C7
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div class="lg:col-span-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Log Pemantauan</h3>
+                        <div class="space-y-4">
+                            <input id="c7Date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-xs">
+                            <input id="c7Admin" type="text" placeholder="NAMA PENTADBIR" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs">
+                            <textarea id="c7Notes" placeholder="ULASAN DAN CADANGAN" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl uppercase font-bold text-xs h-32 outline-none focus:border-indigo-500 transition-all"></textarea>
+                            <button onclick="window.addReportC7()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[9px] tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all">Simpan Borang</button>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                        <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Rekod Lawatan</h3>
+                        <div class="space-y-3">
+                            ${state.reportsC7.map(r => `
+                                <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                                    <div class="uppercase">
+                                        <div class="font-bold text-slate-700 text-xs">${r.date}</div>
+                                        <div class="text-emerald-500 font-black text-[8px] tracking-widest mt-1">PEMANTAU: ${r.admin}</div>
+                                    </div>
+                                    <button onclick="window.delReportC7('${r.id}')" class="p-2 text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- DATABASE LOGIC ---
         window.toggleAtt = async (id) => {
             const today = new Date().toISOString().split('T')[0];
             const records = state.attendance[today] || {};
@@ -212,43 +320,157 @@
         window.addStudent = async () => {
             const n = document.getElementById('stuName').value;
             const c = document.getElementById('stuClass').value;
-            if(!n) return;
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', Date.now().toString()), { id: Date.now().toString(), name: n.toUpperCase(), className: c.toUpperCase() });
+            if(!n || !c) return;
+            const id = Date.now().toString();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { id, name: n.toUpperCase(), className: c.toUpperCase() });
             document.getElementById('stuName').value = '';
+            document.getElementById('stuClass').value = '';
         };
 
-        window.delStudent = async (id) => { if(confirm('Padam?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id)); };
+        window.delStudent = async (id) => { if(confirm('Padam data murid ini secara kekal?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id)); };
 
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                try {
-                    await signInAnonymously(auth);
-                } catch (e) {
-                    updateUI('auth', 'fail');
-                    showError("Auth Gagal: Sila aktifkan 'Anonymous' di Firebase Authentication.");
-                    return;
-                }
-                return;
+        window.addReportC8 = async () => {
+            const date = document.getElementById('c8Date').value;
+            const teacher = document.getElementById('c8Teacher').value;
+            const notes = document.getElementById('c8Notes').value;
+            if(!teacher) return;
+            const id = Date.now().toString();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC8', id), { id, date, teacher: teacher.toUpperCase(), notes: notes.toUpperCase() });
+            document.getElementById('c8Teacher').value = ''; document.getElementById('c8Notes').value = '';
+        };
+
+        window.delReportC8 = async (id) => { if(confirm('Padam laporan harian ini?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC8', id)); };
+
+        window.addReportC7 = async () => {
+            const date = document.getElementById('c7Date').value;
+            const admin = document.getElementById('c7Admin').value;
+            const notes = document.getElementById('c7Notes').value;
+            if(!admin) return;
+            const id = Date.now().toString();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC7', id), { id, date, admin: admin.toUpperCase(), notes: notes.toUpperCase() });
+            document.getElementById('c7Admin').value = ''; document.getElementById('c7Notes').value = '';
+        };
+
+        window.delReportC7 = async (id) => { if(confirm('Padam rekod pemantauan ini?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC7', id)); };
+
+        // --- PRINTING ENGINE ---
+        window.preparePrint = (mode) => {
+            const overlay = document.getElementById('print-overlay');
+            const area = document.getElementById('print-area');
+            overlay.classList.remove('hidden');
+
+            if (mode === 'C9') {
+                const today = new Date().toISOString().split('T')[0];
+                const att = state.attendance[today] || {};
+                area.innerHTML = `
+                    <div class="text-center mb-8 border-b-2 border-black pb-4">
+                        <h1 class="text-xl font-black underline uppercase">REKOD KEHADIRAN MURID RMT (BORANG C9)</h1>
+                        <p class="font-bold mt-2 uppercase">SEKOLAH: SK SUNGAI HAJI DORANI</p>
+                        <p class="font-bold">TARIKH: ${today}</p>
+                    </div>
+                    <table class="w-full border-collapse border-2 border-black text-xs uppercase">
+                        <thead><tr class="bg-gray-100 border-2 border-black">
+                            <th class="border-2 border-black p-2 w-12 text-center">BIL</th>
+                            <th class="border-2 border-black p-2 text-left px-4">NAMA MURID</th>
+                            <th class="border-2 border-black p-2 w-24">KELAS</th>
+                            <th class="border-2 border-black p-2 w-24">STATUS</th>
+                        </tr></thead>
+                        <tbody>${state.students.map((s, i) => `
+                            <tr>
+                                <td class="border border-black p-2 text-center">${i+1}</td>
+                                <td class="border border-black p-2 px-4">${s.name}</td>
+                                <td class="border border-black p-2 text-center">${s.className}</td>
+                                <td class="border border-black p-2 text-center font-bold">${att[s.id] ? '/' : 'O'}</td>
+                            </tr>
+                        `).join('')}</tbody>
+                    </table>
+                    <div class="mt-10 flex justify-between px-4 italic text-[10px] font-bold">
+                        <p>Disediakan Oleh: .......................................</p>
+                        <p>Disahkan Oleh: .......................................</p>
+                    </div>
+                `;
+            } else if (mode === 'C4') {
+                area.innerHTML = `
+                    <div class="text-center mb-10 border-b-2 border-black pb-4">
+                        <h1 class="text-xl font-black underline uppercase">SENARAI PENERIMA RMT (BORANG C4)</h1>
+                        <p class="font-bold mt-2 uppercase underline">SK SUNGAI HAJI DORANI</p>
+                    </div>
+                    <table class="w-full border-collapse border-2 border-black text-xs uppercase">
+                        <thead><tr class="bg-gray-100 border-2 border-black font-bold">
+                            <th class="border-2 border-black p-3 w-16">BIL</th>
+                            <th class="border-2 border-black p-3 text-left px-6">NAMA PENUH MURID</th>
+                            <th class="border-2 border-black p-3 w-40">TAHUN / KELAS</th>
+                        </tr></thead>
+                        <tbody>${state.students.map((s, i) => `
+                            <tr><td class="border border-black p-3 text-center">${i+1}</td><td class="border border-black p-3 px-6">${s.name}</td><td class="border border-black p-3 text-center">${s.className}</td></tr>
+                        `).join('')}</tbody>
+                    </table>
+                `;
+            } else if (mode === 'C8') {
+                area.innerHTML = `
+                    <h1 class="text-center text-xl font-black underline mb-10 uppercase">LOG LAPORAN HARIAN GURU BERTUGAS (C8)</h1>
+                    ${state.reportsC8.map(r => `
+                        <div class="mb-10 border-2 border-black p-6 uppercase text-xs">
+                            <div class="flex justify-between font-bold border-b border-black pb-2 mb-4">
+                                <span>TARIKH: ${r.date}</span>
+                                <span>GURU: ${r.teacher}</span>
+                            </div>
+                            <div class="p-4 bg-gray-50 italic leading-relaxed"><b>CATATAN:</b> <br><br> ${r.notes}</div>
+                        </div>
+                    `).join('')}
+                `;
+            } else if (mode === 'C7') {
+                area.innerHTML = `
+                    <h1 class="text-center text-xl font-black underline mb-10 uppercase font-serif">LAPORAN PEMANTAUAN PENTADBIR (C7)</h1>
+                    ${state.reportsC7.map(r => `
+                        <div class="mb-12 border-4 border-black p-10 uppercase text-[11px] min-h-[150mm] relative">
+                            <div class="flex justify-between font-black text-sm mb-10 border-b-2 border-black pb-2">
+                                <span>TARIKH LAWATAN: ${r.date}</span>
+                                <span>PEMANTAU: ${r.admin}</span>
+                            </div>
+                            <div class="font-bold">ULASAN DAN CADANGAN PENAMBAHBAIKAN:</div>
+                            <div class="mt-4 p-6 border border-black italic bg-slate-50 min-h-[100px]">${r.notes}</div>
+                            <div class="mt-20 flex justify-between items-end">
+                                <div class="text-center w-48 border-t border-black pt-2 font-bold">Tandatangan Pemantau</div>
+                                <div class="text-center w-48 border-t border-black pt-2 font-bold">Cap Rasmi & Tarikh</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
             }
-            updateUI('auth', 'done');
-            
-            try {
+        };
+
+        // --- AUTH & DATA SYNC ---
+        if (auth) {
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) { try { await signInAnonymously(auth); } catch(e) { showError("Gagal Login Anonymous."); } return; }
+                
+                // Real-time Students
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
-                    updateUI('data', 'done');
                     state.students = snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name));
                     document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
                     render();
-                }, (e) => {
-                    updateUI('data', 'fail');
-                    showError("Data Disekat: Sila tukar Firestore Rules kepada 'allow read, write: if true;'.");
-                });
+                }, (e) => showError("Pangkalan Data Disekat. Periksa Rules Firestore."));
 
+                // Real-time Attendance
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), (snap) => {
                     snap.docs.forEach(d => state.attendance[d.id] = d.data().records);
                     render();
                 });
-            } catch (e) { showError(e.message); }
-        });
+
+                // Real-time C8
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC8'), (snap) => {
+                    state.reportsC8 = snap.docs.map(d => d.data()).sort((a,b) => b.date.localeCompare(a.date));
+                    render();
+                });
+
+                // Real-time C7
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC7'), (snap) => {
+                    state.reportsC7 = snap.docs.map(d => d.data()).sort((a,b) => b.date.localeCompare(a.date));
+                    render();
+                });
+            });
+        }
     </script>
 </body>
 </html>
