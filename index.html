@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem RMT SKSHD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @media print { .no-print { display: none !important; } .print-area { display: block !important; } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 text-sm h-screen flex flex-col overflow-hidden">
+
+    <!-- LOADING SCREEN -->
+    <div id="loader" class="fixed inset-0 bg-slate-900 z-[9999] flex flex-col items-center justify-center text-white">
+        <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="font-bold text-[9px] uppercase tracking-widest opacity-50">Menyambung Ke Awan...</p>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- SIDEBAR -->
+        <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white no-print">
+            <div class="p-6 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
+                <div class="p-2 bg-emerald-500 rounded-lg"><i data-lucide="cloud" class="w-4 h-4"></i></div>
+                <h1 class="font-black uppercase text-xs tracking-tighter">RMT SKSHD</h1>
+            </div>
+            <nav class="flex-1 p-4 space-y-1">
+                <button onclick="window.setTab('dash')" id="nav-dash" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-800">
+                    <i data-lucide="check-square" class="w-4 h-4"></i>
+                    <span class="font-bold uppercase text-[9px] tracking-widest">Kehadiran (C9)</span>
+                </button>
+                <button onclick="window.setTab('stu')" id="nav-stu" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all hover:bg-slate-800 text-slate-400">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span class="font-bold uppercase text-[9px] tracking-widest">Urus Murid</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div id="content" class="max-w-4xl mx-auto"></div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // ============================================================
+        // ⚠️ PASTE KUNCI FIREBASE ANDA DI DALAM { } DI BAWAH INI
+        // ============================================================
+        const firebaseConfig = {
+            // PASTE DI SINI
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = "skshd-rmt-cloud";
+
+        let state = { tab: 'dash', students: [], attendance: {} };
+
+        window.setTab = (t) => { state.tab = t; render(); };
+
+        function render() {
+            const container = document.getElementById('content');
+            
+            // Update Nav
+            document.querySelectorAll('nav button').forEach(b => b.classList.add('text-slate-400'));
+            document.getElementById(`nav-${state.tab}`).classList.remove('text-slate-400');
+            document.getElementById(`nav-${state.tab}`).classList.add('bg-emerald-600', 'text-white');
+
+            if (state.tab === 'dash') {
+                const today = new Date().toISOString().split('T')[0];
+                const att = state.attendance[today] || {};
+                const hadir = Object.values(att).filter(v => v).length;
+
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-black uppercase">Kehadiran (C9)</h2>
+                        <button onclick="window.print()" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase no-print">Cetak</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-6 no-print">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
+                            <p class="text-[8px] font-black text-slate-400 uppercase">Jumlah Murid</p>
+                            <p class="text-2xl font-black">${state.students.length}</p>
+                        </div>
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 text-center text-emerald-700">
+                            <p class="text-[8px] font-black uppercase">Hadir Hari Ini</p>
+                            <p class="text-2xl font-black">${hadir}</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 border-b border-slate-100 text-[9px] uppercase font-bold text-slate-400">
+                                <tr><th class="p-4">Nama Murid</th><th class="p-4 text-center">Status</th></tr>
+                            </thead>
+                            <tbody>
+                                ${state.students.map(s => `
+                                    <tr class="border-b border-slate-50">
+                                        <td class="p-4 uppercase font-bold text-slate-700">${s.name} <br><span class="text-[8px] text-slate-300">${s.className}</span></td>
+                                        <td class="p-4 text-center">
+                                            <button onclick="window.toggle('${s.id}')" class="px-4 py-1.5 rounded-lg font-black text-[9px] uppercase transition-all ${att[s.id] ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'} no-print">
+                                                ${att[s.id] ? 'Hadir' : 'Ponteng'}
+                                            </button>
+                                            <span class="hidden print-only font-bold">${att[s.id] ? '/' : 'O'}</span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <h2 class="text-xl font-black uppercase mb-6">Urus Murid</h2>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 mb-6">
+                        <h3 class="text-[10px] font-bold uppercase text-slate-400 mb-4">Daftar Baru</h3>
+                        <div class="flex gap-2">
+                            <input id="n" type="text" placeholder="NAMA" class="flex-1 p-2 bg-slate-50 border border-slate-200 rounded uppercase font-bold text-xs">
+                            <input id="c" type="text" placeholder="KELAS" class="w-32 p-2 bg-slate-50 border border-slate-200 rounded uppercase font-bold text-xs">
+                            <button onclick="window.add()" class="bg-slate-900 text-white px-6 rounded font-bold text-[10px] uppercase">Simpan</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-slate-200">
+                        ${state.students.map(s => `
+                            <div class="py-2 border-b border-slate-50 flex justify-between items-center text-[10px] font-bold uppercase">
+                                <span>${s.name} (${s.className})</span>
+                                <button onclick="window.del('${s.id}')" class="text-rose-500"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        window.toggle = async (id) => {
+            const today = new Date().toISOString().split('T')[0];
+            const records = state.attendance[today] || {};
+            records[id] = !records[id];
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', today), { records });
+        };
+
+        window.add = async () => {
+            const n = document.getElementById('n').value;
+            const c = document.getElementById('c').value;
+            if(!n) return;
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', Date.now().toString()), { id: Date.now().toString(), name: n.toUpperCase(), className: c.toUpperCase() });
+            document.getElementById('n').value = '';
+        };
+
+        window.del = async (id) => { if(confirm('Padam?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id)); };
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) { signInAnonymously(auth); return; }
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
+                state.students = snap.docs.map(d => d.data()).sort((a,b) => a.name.localeCompare(b.name));
+                document.getElementById('loader').style.display = 'none';
+                render();
+            });
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), (snap) => {
+                snap.docs.forEach(d => state.attendance[d.id] = d.data().records);
+                render();
+            });
+        });
+    </script>
+</body>
+</html>
