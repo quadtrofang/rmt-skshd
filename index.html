@@ -175,6 +175,8 @@
             // Secara lalai (default), semua murid dianggap hadir melainkan ditanda 'false'
             const hadir = state.students.length - Object.values(att).filter(v => v === false).length;
 
+            const isConfirmed = !!state.attendance[date];
+
             // Jana senarai kelas yang unik untuk pilihan dropdown
             const uniqueClasses = [...new Set(state.students.map(s => s.className))].filter(Boolean).sort();
             
@@ -190,11 +192,16 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <div>
                         <h2 class="text-xl font-black uppercase tracking-tight">Kehadiran Harian (C9)</h2>
-                        <input type="date" onchange="window.changeDate(this.value)" value="${date}" class="mt-2 bg-white border border-slate-200 p-2 rounded-xl text-[10px] font-bold uppercase outline-none shadow-sm">
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="date" onchange="window.changeDate(this.value)" value="${date}" class="bg-white border border-slate-200 p-2 rounded-xl text-[10px] font-bold uppercase outline-none shadow-sm">
+                            <button onclick="window.confirmAttendance()" class="${isConfirmed ? 'bg-emerald-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-xl font-bold text-[9px] uppercase shadow-sm flex items-center gap-1 active:scale-95 transition-all">
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> ${isConfirmed ? 'Telah Disahkan' : 'Sahkan Hari Ini'}
+                            </button>
+                        </div>
                     </div>
                     <div class="flex gap-2">
                          <input type="month" onchange="state.printMonth = this.value" value="${state.printMonth}" class="bg-white border p-2 rounded-xl text-[9px] font-bold uppercase outline-none">
-                         <button onclick="window.preparePrint('C9_MONTH')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-[9px] uppercase shadow-lg flex items-center gap-2">
+                         <button onclick="window.preparePrint('C9_MONTH')" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-[9px] uppercase shadow-lg flex items-center gap-2">
                              <i data-lucide="printer" class="w-4 h-4"></i> Cetak C9 Bulanan
                          </button>
                     </div>
@@ -457,6 +464,13 @@
         // ==========================================
         // DATABASE FUNCTIONS
         // ==========================================
+        window.confirmAttendance = async () => {
+            const date = state.selectedDate;
+            const records = state.attendance[date] || {};
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', date), { records, updatedAt: Date.now() });
+            alert(`Selesai! Kehadiran bertarikh ${date} telah direkodkan.`);
+        };
+
         window.toggleAtt = async (id) => {
             const date = state.selectedDate;
             const records = state.attendance[date] || {};
@@ -861,11 +875,15 @@
                                 ${[...Array(totalDays)].map((_, di) => {
                                     const dKey = `${y}-${String(m).padStart(2,'0')}-${String(di+1).padStart(2,'0')}`;
                                     const dow = new Date(dKey).getDay();
-                                    const status = (state.attendance[dKey] || {})[s.id];
+                                    const dateRecord = state.attendance[dKey];
                                     
                                     if (dow === 0 || dow === 6) return `<td class="border border-black bg-gray-200"></td>`;
                                     if (dKey > todayStr) return `<td class="border border-black"></td>`; // Kosongkan hari akan datang
                                     
+                                    // HANYA LETAK TANDA JIKA KEHADIRAN TELAH DISAHKAN PADA TARIKH INI
+                                    if (!dateRecord) return `<td class="border border-black"></td>`;
+                                    
+                                    const status = dateRecord[s.id];
                                     if (status !== false) { countHadir++; return `<td class="border border-black font-bold">/</td>`; }
                                     countTidakHadir++; return `<td class="border border-black text-red-600 font-black">O</td>`;
                                 }).join('')}
