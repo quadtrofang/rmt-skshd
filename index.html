@@ -156,6 +156,9 @@
         window.updatePrintMonth = (v) => { state.printMonth = v; render(); };
 
         function render() {
+            // SIMPAN ID ELEMEN YANG SEDANG AKTIF (FOKUS)
+            const activeId = document.activeElement ? document.activeElement.id : null;
+            
             const container = document.getElementById('content');
             document.querySelectorAll('aside nav button').forEach(b => b.classList.remove('nav-active'));
             const activeNav = document.getElementById(`nav-${state.tab}`);
@@ -167,6 +170,20 @@
             else if (state.tab === 'mon') container.innerHTML = renderMonitoringC7();
 
             lucide.createIcons();
+
+            // KEMBALIKAN FOKUS SECARA AUTOMATIK
+            if (activeId) {
+                const el = document.getElementById(activeId);
+                if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                    el.focus();
+                    // Letakkan kursor di akhir teks
+                    if (el.type === 'text' || el.tagName === 'TEXTAREA') {
+                        const val = el.value;
+                        el.value = '';
+                        el.value = val;
+                    }
+                }
+            }
         }
 
         // ==========================================
@@ -175,15 +192,16 @@
         function renderDashboard() {
             const date = state.selectedDate;
             const att = state.attendance[date] || {};
-            // Kira jumlah yang BENAR-BENAR hadir (Hadir = true)
+            
+            // KIRAAN RINGKASAN
+            const jumlahMurid = state.students.length;
             const hadir = Object.values(att).filter(v => v === true).length;
+            const tidakHadir = Object.values(att).filter(v => v === false).length;
+            const belumDiisi = jumlahMurid - (hadir + tidakHadir);
 
             const isConfirmed = !!state.attendance[date];
-
-            // Jana senarai kelas yang unik untuk pilihan dropdown
             const uniqueClasses = [...new Set(state.students.map(s => s.className))].filter(Boolean).sort();
             
-            // Logik tapisan (Filter) Murid
             const filteredStudents = state.students.filter(s => {
                 const matchName = s.name.toLowerCase().includes((state.searchQuery || '').toLowerCase());
                 const matchClass = state.filterClass ? s.className === state.filterClass : true;
@@ -215,24 +233,27 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm col-span-2 md:col-span-1">
                         <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Jumlah Murid</p>
-                        <p class="text-3xl font-black">${state.students.length}</p>
+                        <p class="text-2xl font-black">${jumlahMurid}</p>
                     </div>
-                    <div class="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 shadow-sm text-emerald-700">
+                    <div class="bg-emerald-50 p-5 rounded-3xl border border-emerald-100 shadow-sm text-emerald-700">
                         <p class="text-[9px] font-black uppercase tracking-widest mb-1">Hadir (Makan)</p>
-                        <p class="text-3xl font-black">${hadir}</p>
+                        <p class="text-2xl font-black">${hadir}</p>
+                    </div>
+                    <div class="bg-rose-50 p-5 rounded-3xl border border-rose-100 shadow-sm text-rose-700">
+                        <p class="text-[9px] font-black uppercase tracking-widest mb-1">Tidak Hadir</p>
+                        <p class="text-2xl font-black">${tidakHadir}</p>
                     </div>
                 </div>
 
-                <!-- BAR TAPISAN PENCARIAN -->
                 <div class="flex flex-col md:flex-row gap-3 mb-6 p-4 bg-white rounded-3xl border border-slate-200 shadow-sm no-print">
                     <div class="flex-1 relative">
                         <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
                             <i data-lucide="search" class="w-4 h-4"></i>
                         </div>
-                        <input type="text" placeholder="Cari nama murid..." oninput="window.updateSearch(this.value)" value="${state.searchQuery}" class="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-emerald-500 uppercase transition-all">
+                        <input id="searchInput" type="text" placeholder="Cari nama murid..." oninput="window.updateSearch(this.value)" value="${state.searchQuery}" class="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-emerald-500 uppercase transition-all">
                     </div>
                     <div class="w-full md:w-48">
                         <select onchange="window.updateFilterClass(this.value)" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-emerald-500 uppercase transition-all">
@@ -256,7 +277,6 @@
                         </thead>
                         <tbody class="divide-y divide-slate-50">
                             ${filteredStudents.length > 0 ? filteredStudents.map((s, i) => {
-                                // LOGIK BUTANG 3-WARNA (KELABU -> HIJAU -> MERAH)
                                 const status = att[s.id];
                                 let btnClass = 'bg-slate-100 text-slate-400 border-b-4 border-slate-200';
                                 let btnText = 'BELUM DIISI';
@@ -373,8 +393,6 @@
         // ==========================================
         function renderReportsC8() {
             const dStr = new Date().toISOString().split('T')[0];
-            
-            // Auto calculate based on attendance data today (Hadir = true)
             const attToday = state.attendance[dStr] || {};
             const hadirToday = Object.values(attToday).filter(v => v === true).length;
             const jumlahRMT = state.students.length;
@@ -433,7 +451,7 @@
 
                     <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                         <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest px-4">Arkib Rekod C8 (${state.reportsC8.length})</h3>
-                        <div class="space-y-3 px-4">
+                        <div class="space-y-3 px-4 text-[9px] font-bold">
                             ${state.reportsC8.map(r => `
                                 <div class="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
                                     <div>
@@ -485,7 +503,7 @@
                             <button onclick="window.addReportC7()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold uppercase text-[10px] tracking-widest shadow-lg">Simpan Laporan C7</button>
                         </div>
                     </div>
-                    <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="lg:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm text-[9px] font-bold">
                         <h3 class="font-black uppercase text-[10px] text-slate-400 mb-6 tracking-widest">Rekod Pemantauan</h3>
                         <div class="space-y-3">
                             ${state.reportsC7.map(r => `
@@ -569,70 +587,39 @@
             const n = document.getElementById('stuName').value;
             const c = document.getElementById('stuClass').value;
             const g = document.getElementById('stuGender').value;
-            
             const tj = document.getElementById('stuTinggiJan').value;
             const bj = document.getElementById('stuBeratJan').value;
             const tn = document.getElementById('stuTinggiNov').value;
             const bn = document.getElementById('stuBeratNov').value;
-
             if(!n || !c) return;
             const id = state.editStudentId || Date.now().toString();
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { 
-                id, 
-                name: n.toUpperCase(), 
-                className: c.toUpperCase(), 
-                gender: g,
-                tinggiJan: tj,
-                beratJan: bj,
-                tinggiNov: tn,
-                beratNov: bn
+                id, name: n.toUpperCase(), className: c.toUpperCase(), gender: g,
+                tinggiJan: tj, beratJan: bj, tinggiNov: tn, beratNov: bn
             });
             window.cancelEdit();
         };
 
         window.addBulk = async () => {
             const text = document.getElementById('bulkData').value;
-            if(!text.trim()) {
-                alert("Kotak data pukal kosong. Sila masukkan data terlebih dahulu.");
-                return;
-            }
-            
+            if(!text.trim()) { alert("Kotak data pukal kosong."); return; }
             const lines = text.split('\n').filter(l => l.trim() !== "");
-            let count = 0;
-            let fail = 0;
-            
+            let count = 0; let fail = 0;
             for(let line of lines) {
-                // Pecahkan guna koma (,) ATAU tab (\t) untuk menyokong copy-paste dari Excel
                 const parts = line.split(/[\t,]+/).map(p => p.trim()).filter(p => p !== "");
-                
                 if(parts.length >= 2) {
-                    const id = crypto.randomUUID ? crypto.randomUUID() : "std_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
-                    
-                    // Buang nombor senarai di hadapan jika ada (Cth: "1. ALI" -> "ALI")
+                    const id = crypto.randomUUID ? crypto.randomUUID() : "std_" + Date.now();
                     let name = parts[0].toUpperCase().replace(/^\d+[\.\)]\s*/, '');
                     let className = parts[1].toUpperCase();
-                    let gender = "L"; // Default Lelaki
-                    
-                    if (parts.length > 2) {
-                        gender = parts[2].toUpperCase().startsWith('P') ? 'P' : 'L';
-                    }
-
+                    let gender = parts[2] ? (parts[2].toUpperCase().startsWith('P') ? 'P' : 'L') : "L";
                     try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { 
-                            id, name: name, className: className, gender: gender, updatedAt: Date.now() 
-                        });
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id), { id, name, className, gender, updatedAt: Date.now() });
                         count++;
-                    } catch (e) {
-                        console.error("Ralat menyimpan data:", e);
-                        fail++;
-                    }
-                } else {
-                    fail++;
-                }
+                    } catch (e) { fail++; }
+                } else { fail++; }
             }
-            
             document.getElementById('bulkData').value = ''; 
-            alert(`Proses Selesai!\n\n✅ Berjaya didaftar: ${count} murid\n❌ Gagal / Format salah: ${fail} baris`);
+            alert(`Selesai! Berjaya: ${count}, Gagal: ${fail}`);
         };
 
         window.delStudent = async (id) => { if(confirm('Padam data murid?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', id)); };
@@ -643,18 +630,13 @@
             const menu = document.getElementById('c8Menu').value;
             const jumRMT = state.students.length;
             const hadir = document.getElementById('c8Hadir').value;
-            
             const s1 = document.getElementById('c8SkorMenu').value;
             const s2 = document.getElementById('c8SkorRasa').value;
             const s3 = document.getElementById('c8SkorBersih').value;
             const s4 = document.getElementById('c8SkorDisiplin').value;
             const notes = document.getElementById('c8Notes').value;
-
             if(!t || !menu) { alert('Sila isi Guru & Menu.'); return; }
-            
-            const dayNames = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'];
-            const hari = dayNames[new Date(d).getDay()];
-
+            const hari = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][new Date(d).getDay()];
             const id = Date.now().toString();
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC8', id), { 
                 id, date: d, day: hari, teacher: t.toUpperCase(), menu: menu.toUpperCase(), 
@@ -676,9 +658,7 @@
             const s3 = document.getElementById('c7s3').value || 4;
             const s4 = document.getElementById('c7s4').value || 4;
             if(!a) return;
-            const dayNames = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'];
-            const hari = dayNames[new Date(d).getDay()];
-
+            const hari = ['AHAD', 'ISNIN', 'SELASA', 'RABU', 'KHAMIS', 'JUMAAT', 'SABTU'][new Date(d).getDay()];
             const id = Date.now().toString();
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC7', id), { 
                 id, date: d, day: hari, admin: a.toUpperCase(), notes: n.toUpperCase(), improv: p.toUpperCase(),
@@ -689,10 +669,6 @@
 
         window.delReportC7 = async (id) => { if(confirm('Padam?')) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'reportsC7', id)); };
 
-
-        // ==========================================
-        // PRINTING ENGINE (EXCEL KPM FORMAT)
-        // ==========================================
         window.preparePrint = (mode) => {
             const overlay = document.getElementById('print-overlay');
             const area = document.getElementById('print-area');
@@ -701,8 +677,6 @@
 
             if (mode === 'C8') {
                 document.title = "Cetak_C8_RMT";
-                
-                // Bina struktur jadual C8 Excel
                 let tbodyRows = '';
                 state.reportsC8.forEach((r, idx) => {
                     tbodyRows += `
@@ -722,325 +696,89 @@
                         <tr><td class="border border-black p-1 text-left px-2">4. Disiplin murid</td><td class="border border-black p-1 text-center font-bold">${r.s_disiplin || 4}</td></tr>
                     `;
                 });
-
-                if(state.reportsC8.length === 0) tbodyRows = '<tr><td colspan="9" class="border border-black p-10 text-center uppercase font-bold text-slate-400">Tiada Rekod C8 Ditemui</td></tr>';
-
                 area.innerHTML = `
                     <div class="text-right font-bold text-xs mb-2">BORANG C8</div>
-                    <div class="text-center mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">LAPORAN HARIAN RANCANGAN MAKANAN TAMBAHAN (RMT)</h1>
-                    </div>
+                    <div class="text-center mb-6 uppercase"><h1 class="text-sm font-black underline">LAPORAN HARIAN RANCANGAN MAKANAN TAMBAHAN (RMT)</h1></div>
                     <table class="w-full text-[8px] uppercase border-collapse border border-black text-center">
-                        <thead class="bg-gray-100 font-bold">
-                            <tr>
-                                <th class="border border-black p-2 w-10">BIL HARI</th>
-                                <th class="border border-black p-2 w-24">HARI / TARIKH</th>
-                                <th class="border border-black p-2 w-32">GURU BERTUGAS</th>
-                                <th class="border border-black p-2 w-20">BIL. MURID HADIR</th>
-                                <th class="border border-black p-2 w-32">KRITERIA</th>
-                                <th class="border border-black p-2 w-16">SKOR (1-4)</th>
-                                <th class="border border-black p-2 w-48">CATATAN</th>
-                                <th class="border border-black p-2 w-32">TANDATANGAN GURU</th>
-                                <th class="border border-black p-2 w-32">TANDATANGAN PENGUSAHA</th>
-                            </tr>
-                        </thead>
-                        <tbody>${tbodyRows}</tbody>
+                        <thead class="bg-gray-100 font-bold"><tr>
+                            <th class="border border-black p-2 w-10">BIL HARI</th><th class="border border-black p-2 w-24">HARI / TARIKH</th><th class="border border-black p-2 w-32">GURU BERTUGAS</th><th class="border border-black p-2 w-20">BIL. MURID HADIR</th><th class="border border-black p-2 w-32">KRITERIA</th><th class="border border-black p-2 w-16">SKOR (1-4)</th><th class="border border-black p-2 w-48">CATATAN</th><th class="border border-black p-2 w-32">TANDATANGAN GURU</th><th class="border border-black p-2 w-32">TANDATANGAN PENGUSAHA</th>
+                        </tr></thead><tbody>${tbodyRows || '<tr><td colspan="9">Tiada Rekod</td></tr>'}</tbody>
                     </table>
-                    <div class="mt-4 text-[8px] font-bold flex gap-4">
-                        <div>PETUNJUK SKOR:</div>
-                        <div>1: TIDAK MEMUASKAN</div>
-                        <div>2: KURANG MEMUASKAN</div>
-                        <div>3: MEMUASKAN</div>
-                        <div>4: SANGAT MEMUASKAN</div>
-                    </div>
-                    <div class="signature-space mt-10">
-                        <div class="sig-box">DISEMAK OLEH:<br><br><br>(GURU BESAR/GPK HEM)</div>
-                    </div>
+                    <div class="mt-4 text-[8px] font-bold flex gap-4"><div>PETUNJUK SKOR:</div><div>1: TIDAK MEMUASKAN</div><div>2: KURANG MEMUASKAN</div><div>3: MEMUASKAN</div><div>4: SANGAT MEMUASKAN</div></div>
+                    <div class="signature-space mt-10"><div class="sig-box">DISEMAK OLEH:<br><br><br>(GURU BESAR/GPK HEM)</div></div>
                 `;
             } else if (mode === 'C1') {
-                document.body.classList.add('portrait-mode');
-                document.title = "Cetak_C1_RMT";
-                
+                document.body.classList.add('portrait-mode'); document.title = "Cetak_C1_RMT";
                 area.innerHTML = `
                     <div class="text-right font-bold text-xs mb-2">BORANG C1</div>
-                    <div class="text-center mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">REKOD FIZIKAL MURID</h1>
-                        <div class="flex justify-between mt-4 px-10 font-bold text-xs text-left">
-                            <div>NAMA SEKOLAH : SK SUNGAI HAJI DORANI<br>KOD SEKOLAH : (KOD)<br>DAERAH : SABAK BERNAM</div>
-                            <div>NEGERI : SELANGOR</div>
-                        </div>
-                    </div>
+                    <div class="text-center mb-6 uppercase"><h1 class="text-sm font-black underline">REKOD FIZIKAL MURID</h1></div>
                     <table class="w-full text-[8px] uppercase border-collapse border border-black text-center">
                         <thead class="bg-gray-100 font-bold">
-                            <tr>
-                                <th rowspan="2" class="border border-black p-1 w-10">BIL</th>
-                                <th rowspan="2" class="border border-black p-1 text-left px-2">NAMA MURID</th>
-                                <th rowspan="2" class="border border-black p-1 w-20">TAHUN / KELAS</th>
-                                <th colspan="4" class="border border-black p-1">MAKLUMAT TINGGI DAN BERAT</th>
-                            </tr>
-                            <tr>
-                                <th class="border border-black p-1 w-16">TINGGI (M) JAN</th>
-                                <th class="border border-black p-1 w-16">TINGGI (M) NOV</th>
-                                <th class="border border-black p-1 w-16">BERAT (KG) JAN</th>
-                                <th class="border border-black p-1 w-16">BERAT (KG) NOV</th>
-                            </tr>
+                            <tr><th rowspan="2" class="border border-black p-1 w-10">BIL</th><th rowspan="2" class="border border-black p-1 text-left px-2">NAMA MURID</th><th rowspan="2" class="border border-black p-1 w-20">TAHUN / KELAS</th><th colspan="4" class="border border-black p-1">MAKLUMAT TINGGI DAN BERAT</th></tr>
+                            <tr><th class="border border-black p-1">TINGGI (M) JAN</th><th class="border border-black p-1">TINGGI (M) NOV</th><th class="border border-black p-1">BERAT (KG) JAN</th><th class="border border-black p-1">BERAT (KG) NOV</th></tr>
                         </thead>
-                        <tbody>${state.students.map((s, i) => `
-                            <tr>
-                                <td class="border border-black p-1">${i+1}</td>
-                                <td class="border border-black p-1 text-left px-2 font-bold">${s.name}</td>
-                                <td class="border border-black p-1">${s.className}</td>
-                                <td class="border border-black p-1">${s.tinggiJan || ''}</td>
-                                <td class="border border-black p-1">${s.tinggiNov || ''}</td>
-                                <td class="border border-black p-1">${s.beratJan || ''}</td>
-                                <td class="border border-black p-1">${s.beratNov || ''}</td>
-                            </tr>
-                        `).join('')}</tbody>
-                    </table>
-                `;
-            } else if (mode === 'C2') {
-                document.body.classList.add('portrait-mode');
-                document.title = "Cetak_C2_RMT";
-                
-                area.innerHTML = `
-                    <div class="text-right font-bold text-xs mb-2">BORANG C2</div>
-                    <div class="text-center mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">REKOD AKADEMIK MURID</h1>
-                        <div class="flex justify-between mt-4 px-10 font-bold text-xs text-left">
-                            <div>NAMA SEKOLAH : SK SUNGAI HAJI DORANI<br>KOD SEKOLAH : (KOD)<br>DAERAH : SABAK BERNAM</div>
-                        </div>
-                    </div>
-                    <table class="w-full text-[8px] uppercase border-collapse border border-black text-center">
-                        <thead class="bg-gray-100 font-bold">
-                            <tr>
-                                <th rowspan="2" class="border border-black p-1 w-10">BIL</th>
-                                <th rowspan="2" class="border border-black p-1 text-left px-2">NAMA MURID</th>
-                                <th rowspan="2" class="border border-black p-1 w-20">KELAS</th>
-                                <th colspan="2" class="border border-black p-1">PERATUS KEHADIRAN</th>
-                                <th colspan="2" class="border border-black p-1">PRESTASI KEHADIRAN (MENINGKAT/MENURUN)</th>
-                            </tr>
-                            <tr>
-                                <th class="border border-black p-1 w-16">TOV</th>
-                                <th class="border border-black p-1 w-16">AR</th>
-                                <th class="border border-black p-1 w-24">NOV TAHUN SEBELUM</th>
-                                <th class="border border-black p-1 w-24">NOV TAHUN SEMASA</th>
-                            </tr>
-                        </thead>
-                        <tbody>${state.students.map((s, i) => `
-                            <tr>
-                                <td class="border border-black p-1">${i+1}</td>
-                                <td class="border border-black p-1 text-left px-2 font-bold">${s.name}</td>
-                                <td class="border border-black p-1">${s.className}</td>
-                                <td class="border border-black p-1"></td><td class="border border-black p-1"></td><td class="border border-black p-1"></td><td class="border border-black p-1"></td>
-                            </tr>
-                        `).join('')}</tbody>
-                    </table>
-                `;
-            } else if (mode === 'C3') {
-                document.body.classList.add('portrait-mode');
-                document.title = "Cetak_C3_RMT";
-                
-                area.innerHTML = `
-                    <div class="text-right font-bold text-xs mb-2">BORANG C3</div>
-                    <div class="text-center mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">JADUAL GURU BERTUGAS RMT TAHUN 2026</h1>
-                    </div>
-                    <table class="w-full text-[10px] uppercase border-collapse border border-black text-center">
-                        <thead class="bg-gray-100 font-bold">
-                            <tr>
-                                <th class="border border-black p-3">HARI / MASA</th>
-                                <th class="border border-black p-3">PAGI</th>
-                                <th class="border border-black p-3">REHAT PERTAMA</th>
-                                <th class="border border-black p-3">REHAT KEDUA</th>
-                                <th class="border border-black p-3">PPKI</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td class="border border-black p-3 font-bold">ISNIN</td><td class="border border-black p-3"></td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3"></td></tr>
-                            <tr><td class="border border-black p-3 font-bold">SELASA</td><td class="border border-black p-3"></td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3"></td></tr>
-                            <tr><td class="border border-black p-3 font-bold">RABU</td><td class="border border-black p-3"></td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3"></td></tr>
-                            <tr><td class="border border-black p-3 font-bold">KHAMIS</td><td class="border border-black p-3"></td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3"></td></tr>
-                            <tr><td class="border border-black p-3 font-bold">JUMAAT</td><td class="border border-black p-3"></td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3">GURU MINGGUAN</td><td class="border border-black p-3"></td></tr>
-                        </tbody>
+                        <tbody>${state.students.map((s, i) => `<tr><td class="border border-black p-1">${i+1}</td><td class="border border-black p-1 text-left px-2 font-bold">${s.name}</td><td class="border border-black p-1">${s.className}</td><td class="border border-black p-1">${s.tinggiJan || ''}</td><td class="border border-black p-1">${s.tinggiNov || ''}</td><td class="border border-black p-1">${s.beratJan || ''}</td><td class="border border-black p-1">${s.beratNov || ''}</td></tr>`).join('')}</tbody>
                     </table>
                 `;
             } else if (mode === 'C4') {
-                document.body.classList.add('portrait-mode');
-                document.title = "Cetak_C4_RMT";
+                document.body.classList.add('portrait-mode'); document.title = "Cetak_C4_RMT";
                 area.innerHTML = `
                     <div class="text-right font-bold text-xs mb-2">BORANG C4</div>
-                    <div class="text-center mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">SENARAI PENERIMA MURID RMT TAHUN 2026</h1>
-                        <p class="font-bold mt-1">SEKOLAH: SK SUNGAI HAJI DORANI</p>
-                    </div>
+                    <div class="text-center mb-6 uppercase"><h1 class="text-sm font-black underline">SENARAI PENERIMA MURID RMT TAHUN 2026</h1><p class="font-bold mt-1">SEKOLAH: SK SUNGAI HAJI DORANI</p></div>
                     <table class="w-full text-[10px] uppercase border-collapse border border-black">
-                        <thead class="bg-gray-100 font-bold"><tr>
-                            <th class="border border-black p-2 w-12 text-center">BIL</th>
-                            <th class="border border-black p-2 text-left px-4">NAMA</th>
-                            <th class="border border-black p-2 w-32 text-center">KELAS</th>
-                        </tr></thead>
-                        <tbody>${state.students.map((s, i) => `
-                            <tr><td class="border border-black text-center p-2">${i+1}</td><td class="border border-black p-2 px-4 font-bold">${s.name}</td><td class="border border-black text-center p-2">${s.className}</td></tr>
-                        `).join('')}</tbody>
+                        <thead class="bg-gray-100 font-bold"><tr><th class="border border-black p-2 w-12 text-center">BIL</th><th class="border border-black p-2 text-left px-4">NAMA</th><th class="border border-black p-2 w-32 text-center">KELAS</th></tr></thead>
+                        <tbody>${state.students.map((s, i) => `<tr><td class="border border-black text-center p-2">${i+1}</td><td class="border border-black p-2 px-4 font-bold">${s.name}</td><td class="border border-black text-center p-2">${s.className}</td></tr>`).join('')}</tbody>
                     </table>
                 `;
-            } else if (mode === 'C7') {
-                document.body.classList.add('portrait-mode');
-                document.title = "Cetak_C7_RMT";
-                
-                let c7List = '';
-                state.reportsC7.forEach(r => {
-                    c7List += `
-                        <div class="page-break">
-                            <div class="text-right font-bold text-xs mb-2">BORANG C7</div>
-                            <h1 class="text-center text-sm font-black underline mb-6 uppercase">LAPORAN PEMANTAUAN GURU BESAR / GURU PENOLONG KANAN HEM</h1>
-                            <div class="text-xs uppercase space-y-4 mb-4 font-bold">
-                                <div>HARI: ${r.day || ''} &nbsp;&nbsp;&nbsp; TARIKH: ${r.date} &nbsp;&nbsp;&nbsp; MASA: ...................</div>
-                            </div>
-                            <div class="text-xs uppercase space-y-2 mb-6">
-                                <p class="font-bold underline">A. MAKLUMAT PENTADBIR SEKOLAH</p>
-                                <p>NAMA GURU BESAR / GPK HEM : ${r.admin}</p>
-                                <p>NAMA GURU BERTUGAS : ..............................................................</p>
-                            </div>
-                            <div class="text-xs uppercase space-y-2 mb-6">
-                                <p class="font-bold underline">B. MAKLUMAT MURID</p>
-                                <p>BIL. MURID : .....................</p>
-                                <p>BIL. KEHADIRAN : .....................</p>
-                            </div>
-                            <div class="text-xs uppercase space-y-2 mb-6">
-                                <p class="font-bold underline">C. DAPATAN PEMANTAUAN</p>
-                                <table class="w-full mt-2 text-center border-collapse border border-black">
-                                    <thead class="bg-gray-100 font-bold">
-                                        <tr><th rowspan="2" class="border border-black p-2 text-left px-2">ITEM</th><th colspan="4" class="border border-black p-1">SKOR</th></tr>
-                                        <tr class="text-[8px]"><th class="border border-black w-16">1<br>TIDAK MEMUASKAN</th><th class="border border-black w-16">2<br>KURANG MEMUASKAN</th><th class="border border-black w-16">3<br>MEMUASKAN</th><th class="border border-black w-16">4<br>SANGAT MEMUASKAN</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td class="border border-black p-1 text-left px-2 font-bold">MENGIKUT MENU</td><td class="border border-black p-1">${r.s1==1?'/':''}</td><td class="border border-black p-1">${r.s1==2?'/':''}</td><td class="border border-black p-1">${r.s1==3?'/':''}</td><td class="border border-black p-1">${r.s1==4?'/':''}</td></tr>
-                                        <tr><td class="border border-black p-1 text-left px-2 font-bold">KUALITI RASA</td><td class="border border-black p-1">${r.s2==1?'/':''}</td><td class="border border-black p-1">${r.s2==2?'/':''}</td><td class="border border-black p-1">${r.s2==3?'/':''}</td><td class="border border-black p-1">${r.s2==4?'/':''}</td></tr>
-                                        <tr><td class="border border-black p-1 text-left px-2 font-bold">KEBERSIHAN</td><td class="border border-black p-1">${r.s3==1?'/':''}</td><td class="border border-black p-1">${r.s3==2?'/':''}</td><td class="border border-black p-1">${r.s3==3?'/':''}</td><td class="border border-black p-1">${r.s3==4?'/':''}</td></tr>
-                                        <tr><td class="border border-black p-1 text-left px-2 font-bold">DISIPLIN MURID</td><td class="border border-black p-1">${r.s4==1?'/':''}</td><td class="border border-black p-1">${r.s4==2?'/':''}</td><td class="border border-black p-1">${r.s4==3?'/':''}</td><td class="border border-black p-1">${r.s4==4?'/':''}</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="text-xs uppercase space-y-2 mb-10">
-                                <p class="font-bold">ULASAN / MAKLUM BALAS :</p>
-                                <div class="p-4 border border-black h-24 italic">${r.notes || ''}</div>
-                                <div class="signature-space mt-2"><div class="sig-box">Tandatangan :</div><div class="sig-box">Cap dan Tarikh :</div></div>
-                            </div>
-                            <div class="text-xs uppercase space-y-2">
-                                <p class="font-bold">PENAMBAHBAIKAN :</p>
-                                <div class="p-4 border border-black h-24 italic">${r.improv || ''}</div>
-                                <div class="signature-space mt-2"><div class="sig-box">Tandatangan :</div><div class="sig-box">Cap dan Tarikh :</div></div>
-                            </div>
-                        </div>
-                    `;
-                });
-                if(state.reportsC7.length === 0) c7List = '<p class="text-center font-bold">TIADA REKOD PEMANTAUAN.</p>';
-                area.innerHTML = c7List;
-
             } else if (mode === 'C9_MONTH') {
                 document.title = "Cetak_C9_RMT";
                 const [y, m] = state.printMonth.split('-').map(Number);
                 const mName = new Date(y, m-1).toLocaleString('ms-MY', { month: 'long', year: 'numeric' });
                 const totalDays = new Date(y, m, 0).getDate();
                 const todayStr = new Date().toISOString().split('T')[0];
-                
                 area.innerHTML = `
                     <div class="text-right font-bold text-xs mb-2">BORANG C9</div>
-                    <div class="text-left mb-6 uppercase">
-                        <h1 class="text-sm font-black underline">REKOD KEHADIRAN MURID RMT</h1>
-                    </div>
+                    <div class="text-left mb-6 uppercase"><h1 class="text-sm font-black underline">REKOD KEHADIRAN MURID RMT</h1></div>
                     <table class="w-full text-[6px] text-center uppercase border-collapse border border-black">
                         <thead class="bg-gray-100 font-bold">
-                            <tr>
-                                <th rowspan="2" class="border border-black p-1 w-6">BIL</th>
-                                <th rowspan="2" class="border border-black p-1 text-left px-2 w-48">NAMA PENUH MURID</th>
-                                <th rowspan="2" class="border border-black p-1">TAHUN</th>
-                                <th rowspan="2" class="border border-black p-1">JANTINA</th>
-                                <th colspan="${totalDays}" class="border border-black p-1">BULAN ${mName}</th>
-                                <th colspan="3" class="border border-black p-1">JUMLAH HARI</th>
-                                <th rowspan="2" class="border border-black p-1">TIDAK<br>HADIR</th>
-                            </tr>
-                            <tr>
-                                ${[...Array(totalDays)].map((_, i) => `<th class="border border-black bg-gray-50 w-3">${i+1}</th>`).join('')}
-                                <th class="border border-black p-1 w-8 leading-tight">BULAN<br>SEMASA</th>
-                                <th class="border border-black p-1 w-8 leading-tight">BULAN<br>LEPAS</th>
-                                <th class="border border-black p-1 w-8 leading-tight">JUMLAH<br>SEMUA</th>
-                            </tr>
+                            <tr><th rowspan="2" class="border border-black p-1 w-6">BIL</th><th rowspan="2" class="border border-black p-1 text-left px-2 w-48">NAMA PENUH MURID</th><th rowspan="2" class="border border-black p-1">TAHUN</th><th rowspan="2" class="border border-black p-1">JANTINA</th><th colspan="${totalDays}" class="border border-black p-1">BULAN ${mName}</th><th colspan="3" class="border border-black p-1">JUMLAH HARI</th><th rowspan="2" class="border border-black p-1 text-red-600">TIDAK<br>HADIR</th></tr>
+                            <tr>${[...Array(totalDays)].map((_, i) => `<th class="border border-black bg-gray-50 w-3 font-normal">${i+1}</th>`).join('')}<th class="border border-black w-8">BLN SEMASA</th><th class="border border-black w-8">BLN LEPAS</th><th class="border border-black w-8">JUMLAH</th></tr>
                         </thead>
                         <tbody>${state.students.map((s, i) => {
-                            let countHadir = 0;
-                            let countTidakHadir = 0;
-                            return `<tr>
-                                <td class="border border-black p-1">${i+1}</td>
-                                <td class="border border-black text-left px-2 truncate">${s.name}</td>
-                                <td class="border border-black p-1">${s.className}</td>
-                                <td class="border border-black p-1">${s.gender || ''}</td>
+                            let h = 0; let th = 0;
+                            return `<tr><td class="border border-black p-1">${i+1}</td><td class="border border-black text-left px-2 truncate">${s.name}</td><td class="border border-black p-1">${s.className}</td><td class="border border-black p-1">${s.gender || ''}</td>
                                 ${[...Array(totalDays)].map((_, di) => {
                                     const dKey = `${y}-${String(m).padStart(2,'0')}-${String(di+1).padStart(2,'0')}`;
-                                    const dow = new Date(dKey).getDay();
                                     const dateRecord = state.attendance[dKey];
-                                    
-                                    if (dow === 0 || dow === 6) return `<td class="border border-black bg-gray-200"></td>`;
-                                    if (dKey > todayStr) return `<td class="border border-black"></td>`; // Kosongkan hari akan datang
-                                    
-                                    // HANYA LETAK TANDA JIKA KEHADIRAN TELAH DISAHKAN PADA TARIKH INI
+                                    if (new Date(dKey).getDay() === 0 || new Date(dKey).getDay() === 6) return `<td class="border border-black bg-gray-100"></td>`;
                                     if (!dateRecord) return `<td class="border border-black"></td>`;
-                                    
-                                    const status = dateRecord[s.id];
-                                    if (status === true) { countHadir++; return `<td class="border border-black font-bold">/</td>`; }
-                                    if (status === false) { countTidakHadir++; return `<td class="border border-black text-red-600 font-black">O</td>`; }
+                                    const st = dateRecord[s.id];
+                                    if (st === true) { h++; return `<td class="border border-black font-bold">/</td>`; }
+                                    if (st === false) { th++; return `<td class="border border-black text-red-600 font-bold">O</td>`; }
                                     return `<td class="border border-black"></td>`;
-                                }).join('')}
-                                <td class="border border-black font-bold text-sm">${countHadir}</td>
-                                <td class="border border-black"></td>
-                                <td class="border border-black"></td>
-                                <td class="border border-black font-bold text-sm text-red-600">${countTidakHadir}</td>
-                            </tr>`
+                                }).join('')}<td class="border border-black font-bold">${h}</td><td class="border border-black"></td><td class="border border-black"></td><td class="border border-black font-bold text-red-600">${th}</td></tr>`
                         }).join('')}</tbody>
                     </table>
                 `;
             }
         };
 
-        // Initialize App
         onAuthStateChanged(auth, async (user) => {
             if (!user) { await signInAnonymously(auth); return; }
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), (snap) => {
-                // Susun ikut KELAS dahulu, kemudian baru ikut NAMA
-                state.students = snap.docs.map(d => d.data()).sort((a, b) => {
-                    const classA = a.className || '';
-                    const classB = b.className || '';
-                    const classCompare = classA.localeCompare(classB);
-                    
-                    if (classCompare !== 0) {
-                        return classCompare; // Jika kelas berbeza, susun ikut kelas
-                    }
-                    
-                    // Jika kelas sama, susun ikut nama
-                    const nameA = a.name || '';
-                    const nameB = b.name || '';
-                    return nameA.localeCompare(nameB);
-                });
-                
+                state.students = snap.docs.map(d => d.data()).sort((a, b) => (a.className || '').localeCompare(b.className || '') || (a.name || '').localeCompare(b.name || ''));
                 document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
                 render();
             }, (e) => showError("Ralat Firestore. Sila periksa Rules pangkalan data anda."));
-            
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), (snap) => {
-                // Mengosongkan data lama supaya tarikh yang dipadam terus terpadam di UI
-                const newAtt = {};
-                snap.docs.forEach(d => newAtt[d.id] = d.data().records);
-                state.attendance = newAtt;
+                snap.docs.forEach(d => state.attendance[d.id] = d.data().records);
                 render();
             });
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC8'), (snap) => {
-                // Susun ikut kronologi tarikh: paling lama ke paling baru (ascending)
                 state.reportsC8 = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
                 render();
             });
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'reportsC7'), (snap) => {
-                // Susun ikut kronologi tarikh: paling lama ke paling baru (ascending)
                 state.reportsC7 = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
                 render();
             });
