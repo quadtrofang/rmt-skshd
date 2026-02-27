@@ -49,7 +49,7 @@
 
     <div class="flex flex-1 overflow-hidden">
         <!-- SIDEBAR -->
-        <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white no-print">
+        <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white no-print shadow-xl z-20">
             <div class="p-6 bg-slate-950 border-b border-slate-800 flex items-center gap-3">
                 <div class="p-2 bg-emerald-500 rounded-xl shadow-lg"><i data-lucide="cloud" class="w-5 h-5"></i></div>
                 <div>
@@ -113,6 +113,7 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+        // KUNCI FIREBASE SKSHD SEBENAR
         const firebaseConfig = {
             apiKey: "AIzaSyCdIiY2Bpu924jrZzaqVO0SqXvOYfPAjQc",
             authDomain: "rmt-skshd.firebaseapp.com",
@@ -174,8 +175,8 @@
         function renderDashboard() {
             const date = state.selectedDate;
             const att = state.attendance[date] || {};
-            // Secara lalai (default), semua murid dianggap hadir melainkan ditanda 'false'
-            const hadir = state.students.length - Object.values(att).filter(v => v === false).length;
+            // Kira jumlah yang BENAR-BENAR hadir (Hadir = true)
+            const hadir = Object.values(att).filter(v => v === true).length;
 
             const isConfirmed = !!state.attendance[date];
 
@@ -254,19 +255,34 @@
                             <tr><th class="p-5 w-16 text-center">BIL</th><th class="p-5">NAMA MURID & KELAS</th><th class="p-5 text-center">TANDAKAN STATUS</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
-                            ${filteredStudents.length > 0 ? filteredStudents.map((s, i) => `
+                            ${filteredStudents.length > 0 ? filteredStudents.map((s, i) => {
+                                // LOGIK BUTANG 3-WARNA (KELABU -> HIJAU -> MERAH)
+                                const status = att[s.id];
+                                let btnClass = 'bg-slate-100 text-slate-400 border-b-4 border-slate-200';
+                                let btnText = 'BELUM DIISI';
+                                
+                                if (status === true) {
+                                    btnClass = 'bg-emerald-500 text-white border-b-4 border-emerald-700';
+                                    btnText = 'HADIR';
+                                } else if (status === false) {
+                                    btnClass = 'bg-rose-500 text-white border-b-4 border-rose-700';
+                                    btnText = 'TIDAK HADIR';
+                                }
+
+                                return `
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="p-5 text-center font-bold text-slate-400">${i+1}</td>
                                     <td class="p-5 uppercase font-bold text-slate-700">
                                         ${s.name} <br><span class="text-[9px] font-black text-slate-400">${s.className} | ${s.gender || 'TIADA'}</span>
                                     </td>
                                     <td class="p-5 text-center">
-                                        <button onclick="window.toggleAtt('${s.id}')" class="px-8 py-2.5 rounded-xl font-black text-[10px] uppercase transition-all shadow-sm active:scale-95 ${att[s.id] !== false ? 'bg-emerald-500 text-white border-b-4 border-emerald-700' : 'bg-rose-500 text-white border-b-4 border-rose-700'}">
-                                            ${att[s.id] !== false ? 'HADIR' : 'TIDAK HADIR'}
+                                        <button onclick="window.toggleAtt('${s.id}')" class="w-32 py-2.5 rounded-xl font-black text-[10px] uppercase transition-all shadow-sm active:scale-95 ${btnClass}">
+                                            ${btnText}
                                         </button>
                                     </td>
                                 </tr>
-                            `).join('') : `<tr><td colspan="3" class="p-8 text-center font-bold text-slate-400 uppercase tracking-widest">Tiada murid dijumpai.</td></tr>`}
+                                `
+                            }).join('') : `<tr><td colspan="3" class="p-8 text-center font-bold text-slate-400 uppercase tracking-widest">Tiada murid dijumpai.</td></tr>`}
                         </tbody>
                     </table>
                 </div>
@@ -358,9 +374,9 @@
         function renderReportsC8() {
             const dStr = new Date().toISOString().split('T')[0];
             
-            // Auto calculate based on attendance data today (Default Hadir)
+            // Auto calculate based on attendance data today (Hadir = true)
             const attToday = state.attendance[dStr] || {};
-            const hadirToday = state.students.length - Object.values(attToday).filter(v => v === false).length;
+            const hadirToday = Object.values(attToday).filter(v => v === true).length;
             const jumlahRMT = state.students.length;
 
             return `
@@ -507,8 +523,15 @@
         window.toggleAtt = async (id) => {
             const date = state.selectedDate;
             const records = state.attendance[date] || {};
-            // Tukar antara Hadir (true/undefined) dan Tidak Hadir (false)
-            records[id] = records[id] === false ? true : false;
+            const currentStatus = records[id];
+            
+            let nextStatus;
+            // KITARAN: Null(Belum Diisi) -> True(Hadir) -> False(Tidak Hadir) -> Null
+            if (currentStatus === null || currentStatus === undefined) nextStatus = true;
+            else if (currentStatus === true) nextStatus = false;
+            else nextStatus = null;
+
+            records[id] = nextStatus;
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance', date), { records, updatedAt: Date.now() });
         };
 
@@ -965,8 +988,9 @@
                                     if (!dateRecord) return `<td class="border border-black"></td>`;
                                     
                                     const status = dateRecord[s.id];
-                                    if (status !== false) { countHadir++; return `<td class="border border-black font-bold">/</td>`; }
-                                    countTidakHadir++; return `<td class="border border-black text-red-600 font-black">O</td>`;
+                                    if (status === true) { countHadir++; return `<td class="border border-black font-bold">/</td>`; }
+                                    if (status === false) { countTidakHadir++; return `<td class="border border-black text-red-600 font-black">O</td>`; }
+                                    return `<td class="border border-black"></td>`;
                                 }).join('')}
                                 <td class="border border-black font-bold text-sm">${countHadir}</td>
                                 <td class="border border-black"></td>
@@ -1004,7 +1028,7 @@
             }, (e) => showError("Ralat Firestore. Sila periksa Rules pangkalan data anda."));
             
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'attendance'), (snap) => {
-                // BUG FIX: Mengosongkan data lama supaya tarikh yang dipadam terus terpadam di UI
+                // Mengosongkan data lama supaya tarikh yang dipadam terus terpadam di UI
                 const newAtt = {};
                 snap.docs.forEach(d => newAtt[d.id] = d.data().records);
                 state.attendance = newAtt;
